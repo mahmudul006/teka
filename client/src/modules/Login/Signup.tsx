@@ -1,35 +1,34 @@
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/hooks/useTheme";
-import { type LoginCredentials } from "@/utilities/api";
+import { type SignupCredentials } from "@/utilities/api";
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 
-interface LoginProps {
+interface SignupProps {
   isAuthenticated: boolean;
-  onLogin: (credentials: LoginCredentials) => Promise<void>;
-  onSwitchToSignup?: () => void;
+  onSignup: (credentials: SignupCredentials) => Promise<void>;
+  onSwitchToLogin: () => void;
 }
 
-export function Login({ isAuthenticated, onLogin, onSwitchToSignup }: LoginProps) {
+export function Signup({ isAuthenticated, onSignup, onSwitchToLogin }: SignupProps) {
   const { toggleTheme, theme } = useTheme();
-  const [formData, setFormData] = useState<LoginCredentials>({
+  const [formData, setFormData] = useState<SignupCredentials>({
     username: '',
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   if (isAuthenticated) {
     return <Navigate to="/dashboard" />;
   }
@@ -45,43 +44,42 @@ export function Login({ isAuthenticated, onLogin, onSwitchToSignup }: LoginProps
     setError('');
 
     try {
-      await onLogin(formData);
+      await onSignup(formData);
+      onSwitchToLogin();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Signup failed');
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Login to your account</CardTitle>
+          <CardTitle>Create your account</CardTitle>
           <CardDescription>
-            Enter your username and password to login
+            Enter your username and password to create a new account
           </CardDescription>
-          <CardAction>
-            {onSwitchToSignup && (
-              <Button variant="link" onClick={onSwitchToSignup}>
-                Don't have an account? Sign Up
-              </Button>
-            )}
+          <div className="flex justify-between">
+            <Button variant="link" onClick={onSwitchToLogin}>
+              Already have an account? Login
+            </Button>
             <Button onClick={toggleTheme} variant="outline" size="sm">
               {theme === 'dark' ? '☀️' : '🌙'} {theme}
             </Button>
-          </CardAction>
+          </div>
         </CardHeader>
         
         <form onSubmit={handleSubmit}>
           <CardContent>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               {error && (
                 <div className="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 p-2 rounded">
                   {error}
                 </div>
               )}
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
@@ -94,28 +92,26 @@ export function Login({ isAuthenticated, onLogin, onSwitchToSignup }: LoginProps
                   required
                 />
               </div>
+
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                  <a
-                    href="#"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
-                <Input 
-                  id="password" 
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
                   name="password"
-                  type="password" 
+                  type="password"
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder="Enter password"
-                  required 
+                  required
+                  minLength={6}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Password must be at least 6 characters long
+                </p>
               </div>
             </div>
           </CardContent>
+          
           <CardFooter className="flex-col gap-2">
             <Button 
               type="submit" 
@@ -123,11 +119,11 @@ export function Login({ isAuthenticated, onLogin, onSwitchToSignup }: LoginProps
               variant="default" 
               disabled={isLoading}
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? 'Creating Account...' : 'Create Account'}
             </Button>
           </CardFooter>
         </form>
       </Card>
     </div>
-  )
-}
+  );
+} 

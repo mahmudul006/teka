@@ -1,63 +1,125 @@
-import axios from 'axios';
-import type { LoginCredentials, RegisterCredentials, AuthResponse } from '../interfaces/auth';
+const API_BASE_URL = 'http://localhost:5001/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// Type definitions
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
 
-const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
+export interface SignupCredentials {
+  username: string;
+  password: string;
+  // Remove email, firstName, lastName as server doesn't expect these
+}
 
-// Request interceptor to add auth token
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('auth-storage');
-    if (token) {
-        try {
-            const parsedToken = JSON.parse(token);
-            if (parsedToken.state?.token) {
-                config.headers.Authorization = `Bearer ${parsedToken.state.token}`;
-            }
-        } catch (error) {
-            console.error('Error parsing auth token:', error);
-        }
+// Server response types (matching actual server responses)
+export interface LoginResponse {
+  token: string;
+}
+
+export interface SignupResponse {
+  message: string;
+  userId: string;
+}
+
+// Client-side auth response type
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  token?: string;
+  user?: {
+    id: string;
+    username: string;
+  };
+}
+
+// API utility with JWT support
+class ApiClient {
+  private baseURL: string;
+
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
+  }
+
+  private getHeaders(): HeadersInit {
+    const token = localStorage.getItem('authToken');
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+  }
+
+  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...this.getHeaders(),
+        ...options?.headers,
+      },
+    });
+
+    if (!response.ok) {
+      // Handle different error response formats
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.text();
+        errorMessage = errorData || errorMessage;
+      } catch {
+        // Use default message if can't parse error
+      }
+      throw new Error(errorMessage);
     }
-    return config;
-});
 
-// Response interceptor for error handling
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            // Clear auth data on unauthorized
-            localStorage.removeItem('auth-storage');
-            window.location.href = '/login';
+    return response.json();
+  }
+
+  // Auth endpoints that match the server
+  async signup(credentials: SignupCredentials): Promise<AuthResponse> {
+    try {
+      const response = await this.request<SignupResponse>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      });
+      
+      // Transform server response to client format
+      return {
+        success: true,
+        message: response.message,
+        user: {
+          id: response.userId,
+          username: credentials.username,
         }
-        return Promise.reject(error);
+      };
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Signup failed');
     }
-);
+  }
 
-export const authAPI = {
-    login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-        const response = await api.post('/auth/login', credentials);
-        return response.data;
-    },
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    try {
+      const response = await this.request<LoginResponse>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      });
+      
+      // Transform server response to client format
+      return {
+        success: true,
+        message: 'Login successful',
+        token: response.token,
+        user: {
+          id: 'unknown', // Server doesn't return user ID in login response
+          username: credentials.username,
+        }
+      };
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Login failed');
+    }
+  }
 
-    register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
-        const response = await api.post('/auth/register', credentials);
-        return response.data;
-    },
+  // Remove profile and dashboard methods as they don't exist on server
+}
 
-    logout: async (): Promise<void> => {
-        await api.post('/auth/logout');
-    },
-
-    refreshToken: async (): Promise<AuthResponse> => {
-        const response = await api.post('/auth/refresh');
-        return response.data;
-    },
-};
-
-export default api; 
+export const apiClient = new ApiClient(API_BASE_URL); 

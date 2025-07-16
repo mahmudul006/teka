@@ -1,18 +1,18 @@
-import { BrowserRouter as Router, useRoutes } from 'react-router-dom';
+import { BrowserRouter as Router } from 'react-router-dom';
+
+import { AuthProvider } from './providers/AuthProvider';
+import { ThemeProvider } from './providers/ThemeProvider';
 import { AppRoutes } from './routes/routes';
 
-function AppRouter() {
-  const routes = AppRoutes();
-  const routing = useRoutes(routes);
-  return routing;
-}
-
-function App() {
+const App = (): React.ReactElement => {
   return (
-    <Router>
-      <AppRouter />
-    </Router>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router >
+          <AppRoutes />
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
-
 export default App;

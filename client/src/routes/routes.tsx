@@ -1,9 +1,8 @@
-import type { RouteObject } from 'react-router-dom';
-import { Navigate } from 'react-router-dom';
+import { Navigate, type RouteObject, useRoutes } from 'react-router';
 import ProtectedRoute from '../components/Router/ProtectedRoute';
-import Login from '../modules/Login/Login';
-import Dashboard from '../modules/Home/Dashboard';
 import { useAuth } from '../hooks/useAuth';
+import Dashboard from '../modules/Home/Dashboard';
+import { AuthContainer } from '../modules/Login/AuthContainer';
 
 // Loading component
 const LoadingSpinner = () => (
@@ -35,15 +34,9 @@ const LoadingSpinner = () => (
       `}
     </style>
   </div>
-);
-
+); 
 export const AppRoutes = () => {
-  const { isAuthenticated, login, logout, user, isLoading } = useAuth();
-
-  // Show loading spinner while checking authentication status
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
+  const { isAuthenticated, logout, user, isLoading } = useAuth();
 
   const routes: RouteObject[] = [
     {
@@ -56,7 +49,7 @@ export const AppRoutes = () => {
     },
     {
       path: '/login',
-      element: <Login isAuthenticated={isAuthenticated} onLogin={login} />,
+      element: <AuthContainer />,
     },
     {
       path: '/dashboard',
@@ -72,5 +65,12 @@ export const AppRoutes = () => {
     },
   ];
 
-  return routes;
+  const routeElements = useRoutes(routes);
+
+  // Show loading spinner while checking authentication status
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  return routeElements;
 };
